@@ -12,16 +12,27 @@ class ToDoListViewController: UITableViewController {
     
     //MARK - Properties
     
-    var itemArray = ["Find Mike", "Buy Eggs", "Destroy garbage"]
-    let defaults = UserDefaults.standard
+    var itemArray = [Item]()
+    //let defaults = UserDefaults.standard
     
-        
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
-        if let items = defaults.array(forKey: "ToDoListArray") as? [String] {
-            itemArray = items
-        }
+        
+        let newItem = Item()
+        newItem.title = "Find Mike"
+        itemArray.append(newItem)
+        
+        let newItem2 = Item()
+        newItem2.title = "Clean Kitchen"
+        itemArray.append(newItem2)
+        
+        let newItem3 = Item()
+        newItem3.title = "Save the world"
+        itemArray.append(newItem3)
+        
+        loadItems()
         
     }
     
@@ -32,7 +43,11 @@ class ToDoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        cell.textLabel?.text = itemArray[indexPath.row]
+        let item = itemArray[indexPath.row]
+        cell.textLabel?.text = itemArray[indexPath.row].title
+        
+        cell.accessoryType = item.done ? .checkmark : .none
+        
         return cell
     }
     
@@ -40,11 +55,17 @@ class ToDoListViewController: UITableViewController {
     //MARK - TableView Delegate Methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         //print(itemArray[indexPath.row])
+        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+        
         if(tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark){
             tableView.cellForRow(at: indexPath)?.accessoryType = .none
         }else{
             tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
         }
+        
+        saveItems()
+        
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
@@ -54,9 +75,11 @@ class ToDoListViewController: UITableViewController {
         let alert = UIAlertController(title: "Add new ToDoey Item", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once the user clicks the Add Item button on our UIAlert
-            self.itemArray.append(textField.text!)
-            self.defaults.setValue(self.itemArray, forKey: "ToDoListArray")
-            self.tableView.reloadData()
+            let newItem = Item()
+            newItem.title = textField.text!
+            self.itemArray.append(newItem)
+            //self.defaults.setValue(self.itemArray, forKey: "ToDoListArray")
+            self.saveItems()
         }
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
@@ -65,6 +88,31 @@ class ToDoListViewController: UITableViewController {
         }
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
+    }
+    
+    //MARK - Data manipulation methods
+    
+    func saveItems(){
+        let encoder = PropertyListEncoder()
+        do{
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        }catch{
+            print("Error with item array encoding")
+        }
+        self.tableView.reloadData()
+    }
+    
+    func loadItems(){
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decorder = PropertyListDecoder()
+            do{
+                itemArray = try decorder.decode([Item].self, from: data)
+                
+            }catch{
+                print("Error inside decorder")
+            }
+        }
     }
 }
 
